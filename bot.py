@@ -276,8 +276,9 @@ def handle_card_picked(call):
         response = model.generate_content(prompt)
         bot.send_message(user_id, response.text)
     except Exception as e:
-        bot.send_message(user_id, "System Error: AI is busy. Please try again.")
-        print(f"Gemini Error: {e}")
+        # Error အစစ်ကို Log မှာ ထုတ်ပြမယ်
+        print(f"🔥🔥🔥 GEMINI ERROR: {e}") 
+        bot.send_message(user_id, f"System Error: {e}") # User ကိုလည်း အမှားပြမယ်
 
 # Run Server & Bot
 # ================= 6. MAIN EXECUTION =================

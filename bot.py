@@ -37,9 +37,13 @@ except:
 
 # AI & Bot Setup
 genai.configure(api_key=GEMINI_API_KEY)
+# Model Name ကို Stable ဖြစ်အောင် 1.5-flash သုံးထားပါသည်
 model = genai.GenerativeModel('gemini-flash-latest')
 bot = telebot.TeleBot(BOT_TOKEN)
 DB_FILE = "users.json"
+
+# User မေးခွန်းများကို ယာယီမှတ်ထားရန် Dictionary
+user_questions = {}
 
 # ပုံ URL များ
 CARD_BACK_URL = "https://upload.wikimedia.org/wikipedia/commons/5/53/RWS_Tarot_16_Tower.jpg"
@@ -223,9 +227,9 @@ def admin_decision(call):
         bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"❌ Declined User {target_id}")
         bot.send_message(target_id, "⚠️ ငွေလွှဲပြေစာ မမှန်ကန်ပါ။ ပြန်စစ်ပေးပါ။")
 
-# (D) User Card Selection Logic (Show Face-down Cards)
+# (D) User Question & Card Selection (UPDATED)
 @bot.message_handler(func=lambda message: True)
-def ask_user_to_pick_card(message):
+def handle_user_question(message):
     user_id = message.from_user.id
     
     # Member စစ်ဆေးခြင်း
@@ -233,15 +237,19 @@ def ask_user_to_pick_card(message):
         bot.reply_to(message, "Member ဝင်ကြေး ပေးသွင်းရန် လိုအပ်ပါသည်။ /start ကို နှိပ်ပါ။")
         return
 
+    # User မေးတဲ့ မေးခွန်းကို မှတ်ထားမည်
+    question = message.text
+    user_questions[user_id] = question
+
     # ခလုတ်များ ဖန်တီးခြင်း
     markup = InlineKeyboardMarkup()
     markup.row(InlineKeyboardButton("ကတ် (၁)", callback_data="pick_1"), InlineKeyboardButton("ကတ် (၂)", callback_data="pick_2"), InlineKeyboardButton("ကတ် (၃)", callback_data="pick_3"))
     markup.row(InlineKeyboardButton("ကတ် (၄)", callback_data="pick_4"), InlineKeyboardButton("ကတ် (၅)", callback_data="pick_5"))
     
-    # ကတ်အမှောက်ပုံ ပို့ပေးခြင်း
-    bot.send_photo(user_id, CARD_BACK_URL, caption="မိတ်ဆွေရဲ့ မေးခွန်းကို အာရုံပြုပြီး...\nအောက်ပါ ကတ် ၅ ကတ်အနက် တစ်ကတ်ကို ရွေးချယ်လိုက်ပါ 👇", reply_markup=markup)
+    # ကတ်အမှောက်ပုံ ပို့ပေးခြင်း (မေးခွန်းကို Caption မှာ ပြန်ပြမည်)
+    bot.send_photo(user_id, CARD_BACK_URL, caption=f"မေးခွန်း: '<b>{question}</b>' အတွက်...\nအောက်ပါ ကတ် ၅ ကတ်အနက် တစ်ကတ်ကို အာရုံပြုပြီး ရွေးချယ်လိုက်ပါ 👇", reply_markup=markup, parse_mode="HTML")
 
-# (E) Handle Card Reveal & Gemini Interpretation
+# (E) Handle Card Reveal & Gemini Interpretation (UPDATED)
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))
 def handle_card_picked(call):
     user_id = call.from_user.id
@@ -259,17 +267,22 @@ def handle_card_picked(call):
     bot.send_chat_action(user_id, 'upload_photo')
     bot.send_photo(user_id, card['url'], caption=f"🔮 ကျရောက်သောကတ်: <b>{card['name']}</b>", parse_mode="HTML")
     
+    # User မေးခွန်းကို ပြန်ဆွဲထုတ်ခြင်း (မရှိရင် Default ထားမည်)
+    user_question = user_questions.get(user_id, "General Fortune and Advice")
+
     # Gemini ကို ဟောခိုင်းခြင်း
     bot.send_chat_action(user_id, 'typing')
     
     prompt = f"""
-    You are a mystical Tarot Reader speaking Burmese.
-    User Question context: They just picked a card for their fortune.
+    You are a professional Tarot Reader speaking Burmese.
+    
+    Client's Question: "{user_question}"
     Card Drawn: "{card['name']}"
     
-    Explain this card's meaning in Burmese. 
-    Focus on general fortune, love, and career advice.
-    Tone: Warm, mystical, and supportive. Use emojis.
+    Please interpret this card specifically answering the client's question.
+    Tone: Warm, mystical, and supportive. 
+    Language: Burmese (Myanmar).
+    Use emojis to make it engaging.
     """
     
     try:

@@ -37,7 +37,7 @@ except:
 
 # AI & Bot Setup
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-flash-latest')
 bot = telebot.TeleBot(BOT_TOKEN)
 DB_FILE = "users.json"
 

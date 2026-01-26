@@ -280,7 +280,23 @@ def handle_card_picked(call):
         print(f"Gemini Error: {e}")
 
 # Run Server & Bot
+# ================= 6. MAIN EXECUTION =================
 if __name__ == "__main__":
-    keep_alive() # Start Flask Server
-    print("Bot is running...")
-    bot.infinity_polling()
+    # Server ကို သီးသန့် Thread နဲ့ Run မယ်
+    keep_alive()
+    
+    # Bot မ run ခင် Webhook အဟောင်းတွေကို ရှင်းထုတ်မယ် (အရေးကြီး)
+    print("Removing old webhooks...")
+    bot.remove_webhook()
+    
+    # ခဏစောင့်မယ်
+    import time
+    time.sleep(1)
+
+    # Bot စ run မယ်
+    print("Bot is starting polling...")
+    try:
+        # skip_pending=True က အဟောင်းတွေကို ကျော်ပြီး အသစ်ကိုပဲ ယူမယ်
+        bot.infinity_polling(skip_pending=True)
+    except Exception as e:
+        print(f"Critical Error: {e}")

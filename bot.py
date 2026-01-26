@@ -42,7 +42,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 DB_FILE = "users.json"
 
 # ပုံ URL များ
-CARD_BACK_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Card_back_05a.svg/237px-Card_back_05a.svg.png"
+CARD_BACK_URL = "https://upload.wikimedia.org/wikipedia/commons/5/53/RWS_Tarot_16_Tower.jpg"
 BASE_URL = "https://www.sacred-texts.com/tarot/pkt/img"
 
 # Bank Info Text

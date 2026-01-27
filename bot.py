@@ -8,15 +8,14 @@ import threading
 from flask import Flask, request
 from datetime import datetime, timedelta
 
-# ================= 1. SERVER SETUP (Render အတွက်) =================
+# ================= 1. SERVER SETUP =================
 server = Flask(__name__)
 
 @server.route('/')
 def home():
-    return "Tarot Bot is Alive & Running!", 200
+    return "Tarot Saya Bot is Alive & Running!", 200
 
 def run_server():
-    # Render က သတ်မှတ်ပေးမယ့် PORT မှာ Run မယ်
     server.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 def keep_alive():
@@ -24,44 +23,41 @@ def keep_alive():
     t.start()
 
 # ================= 2. CONFIGURATION =================
-# Environment Variables မှ Key များ ရယူခြင်း
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# Admin ID ကို Error မတက်အောင် စစ်ဆေးပြီး ယူခြင်း
 try:
     ADMIN_ID = int(os.environ.get("ADMIN_ID"))
 except:
-    print("Warning: ADMIN_ID not found or invalid.")
+    print("Warning: ADMIN_ID not found.")
     ADMIN_ID = 0 
 
-# AI & Bot Setup
+# AI Setup
 genai.configure(api_key=GEMINI_API_KEY)
-# Model Name ကို Stable ဖြစ်အောင် 1.5-flash သုံးထားပါသည်
 model = genai.GenerativeModel('gemini-flash-latest')
 bot = telebot.TeleBot(BOT_TOKEN)
 DB_FILE = "users.json"
 
-# User မေးခွန်းများကို ယာယီမှတ်ထားရန် Dictionary
+# Memory
 user_questions = {}
 
-# ပုံ URL များ
+# Images
 CARD_BACK_URL = "https://upload.wikimedia.org/wikipedia/commons/5/53/RWS_Tarot_16_Tower.jpg"
 BASE_URL = "https://www.sacred-texts.com/tarot/pkt/img"
 
-# Bank Info Text
+# Bank Info
 BANK_INFO = """
-🔮 <b>Member ဝင်ကြေး - ၅,၀၀၀ ကျပ် (၁ လ)</b>
+🔮 <b>Member ဝင်ကြေး - ၁၀,၀၀၀ ကျပ် (၁ လ)</b>
 
 ငွေလွှဲရန်:
 ✅ KBZPay: 09-xxxxxxxxx (Name)
 ✅ WavePay: 09-xxxxxxxxx (Name)
 
 ငွေလွှဲပြီးပါက <b>Screenshot</b> ပို့ပေးပါ။
-Admin မှ စစ်ဆေးပြီး ချက်ချင်း ဖွင့်ပေးပါမည်။
+ဆရာ့တပည့် Admin မှ စစ်ဆေးပြီး ချက်ချင်း ဖွင့်ပေးပါလိမ့်မယ်။
 """
 
-# ================= 3. TAROT DECK (78 Cards Full Set) =================
+# ================= 3. TAROT DECK =================
 TAROT_DECK = [
     # Major Arcana
     {"name": "The Fool", "url": f"{BASE_URL}/ar00.jpg"},
@@ -184,26 +180,20 @@ def add_subscription(user_id, days=30):
 def send_welcome(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
-        bot.reply_to(message, "မင်္ဂလာပါ... Member သက်တမ်း ရှိနေပါသေးတယ်။\nဗေဒင်မေးခွန်း စမေးနိုင်ပါပြီ။")
+        # ဆရာကြီးပုံစံ နှုတ်ဆက်ခြင်း (ပိုသဘာဝကျအောင် ပြင်ထားသည်)
+        bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\nသိချင်တဲ့ အကြောင်းအရာလေးကို စာရိုက်ပြီး မေးနိုင်ပါပြီ။")
     else:
-        bot.send_message(message.chat.id, f"မင်္ဂလာပါခင်ဗျာ... 🙏\n\n{BANK_INFO}", parse_mode="HTML")
+        bot.send_message(message.chat.id, f"မင်္ဂလာပါခင်ဗျာ... ဆရာ့ဆီမှာ ဗေဒင်မေးဖို့ အရင်ဆုံး Member ဝင်ပေးရမှာ ဖြစ်ပါတယ်ဗျ... 🙏\n\n{BANK_INFO}", parse_mode="HTML")
 
-# (B) Handle Payment Slips (Photos)
+# (B) Handle Payment Slips
 @bot.message_handler(content_types=['photo'])
 def handle_slip(message):
     user_id = message.from_user.id
+    bot.reply_to(message, "ကောင်းပါပြီ... ငွေလွှဲပြေစာ ရပါပြီ။ ဆရာ့တပည့် Admin လေးတွေ စစ်ဆေးပေးပါလိမ့်မယ်။ ခဏစောင့်ပေးပါ... ⏳")
     
-    # User ကို စောင့်ခိုင်းစာပို့
-    bot.reply_to(message, "ငွေလွှဲပြေစာ ရပါပြီ။ Admin စစ်ဆေးနေပါသည်။ ⏳")
-    
-    # Admin Approval Buttons
     markup = InlineKeyboardMarkup()
-    markup.row(
-        InlineKeyboardButton("✅ လက်ခံ (၁ လ)", callback_data=f"app_{user_id}"),
-        InlineKeyboardButton("❌ ငြင်းပယ်", callback_data=f"dec_{user_id}")
-    )
+    markup.row(InlineKeyboardButton("✅ လက်ခံ", callback_data=f"app_{user_id}"), InlineKeyboardButton("❌ ငြင်းပယ်", callback_data=f"dec_{user_id}"))
     
-    # Admin ဆီ ပုံ Forward လုပ်ခြင်း
     try:
         file_id = message.photo[-1].file_id
         caption = f"🔔 <b>New Payment!</b>\nID: <code>{user_id}</code>\nName: {message.from_user.first_name}"
@@ -211,106 +201,94 @@ def handle_slip(message):
     except Exception as e:
         print(f"Error sending to admin: {e}")
 
-# (C) Admin Button Logic
+# (C) Admin Decisions
 @bot.callback_query_handler(func=lambda call: call.data.startswith(("app_", "dec_")))
 def admin_decision(call):
     if call.from_user.id != ADMIN_ID: return
-    
     action, target_id = call.data.split("_")
     
     if action == "app":
         add_subscription(target_id)
         bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"✅ Approved User {target_id}")
-        bot.send_message(target_id, "🎉 Member ဝင်ခြင်း အောင်မြင်ပါသည်။\nမေးခွန်း စမေးနိုင်ပါပြီ။")
+        bot.send_message(target_id, "🎉 ကဲ... Member ဝင်တာ အောင်မြင်ပါပြီဗျာ။\nဆရာ့ကို သိချင်တဲ့ မေးခွန်းတွေ စပြီး မေးနိုင်ပါပြီ။")
         
     elif action == "dec":
         bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"❌ Declined User {target_id}")
-        bot.send_message(target_id, "⚠️ ငွေလွှဲပြေစာ မမှန်ကန်ပါ။ ပြန်စစ်ပေးပါ။")
+        bot.send_message(target_id, "⚠️ ငွေလွှဲပြေစာ မမှန်ကန်ဘူး ဖြစ်နေတယ်။ သေချာပြန်စစ်ပြီး ပြန်ပို့ပေးပါဦး။")
 
-# (D) User Question & Card Selection (UPDATED)
+# (D) User Question & Card Selection
 @bot.message_handler(func=lambda message: True)
 def handle_user_question(message):
     user_id = message.from_user.id
-    
-    # Member စစ်ဆေးခြင်း
     if not check_subscription(user_id):
-        bot.reply_to(message, "Member ဝင်ကြေး ပေးသွင်းရန် လိုအပ်ပါသည်။ /start ကို နှိပ်ပါ။")
+        bot.reply_to(message, "ဆရာ့ကို မေးခွန်းမေးဖို့ Member အရင်ဝင်ပေးပါဗျ။ /start ကို နှိပ်ပြီး ဝင်နိုင်ပါတယ်။")
         return
 
-    # User မေးတဲ့ မေးခွန်းကို မှတ်ထားမည်
     question = message.text
     user_questions[user_id] = question
 
-    # ခလုတ်များ ဖန်တီးခြင်း
     markup = InlineKeyboardMarkup()
     markup.row(InlineKeyboardButton("ကတ် (၁)", callback_data="pick_1"), InlineKeyboardButton("ကတ် (၂)", callback_data="pick_2"), InlineKeyboardButton("ကတ် (၃)", callback_data="pick_3"))
     markup.row(InlineKeyboardButton("ကတ် (၄)", callback_data="pick_4"), InlineKeyboardButton("ကတ် (၅)", callback_data="pick_5"))
     
-    # ကတ်အမှောက်ပုံ ပို့ပေးခြင်း (မေးခွန်းကို Caption မှာ ပြန်ပြမည်)
-    bot.send_photo(user_id, CARD_BACK_URL, caption=f"မေးခွန်း: '<b>{question}</b>' အတွက်...\nအောက်ပါ ကတ် ၅ ကတ်အနက် တစ်ကတ်ကို အာရုံပြုပြီး ရွေးချယ်လိုက်ပါ 👇", reply_markup=markup, parse_mode="HTML")
+    # ဆရာကြီးလေသံဖြင့် ကတ်ရွေးခိုင်းခြင်း
+    msg = f"အင်း... '{question}' ဆိုတဲ့ကိစ္စအတွက်...\nဆရာ အာရုံပြုထားလိုက်ပြီ။\n\nကဲ... စိတ်ကို ငြိမ်ငြိမ်ထား၊ ပြီးရင် အောက်က ကတ် ၅ ကတ်ထဲက စိတ်ထဲပေါ်လာတဲ့ တစ်ကတ်ကို ရွေးလိုက်ပါ... 👇"
+    bot.send_photo(user_id, CARD_BACK_URL, caption=msg, reply_markup=markup)
 
-# (E) Handle Card Reveal & Gemini Interpretation (UPDATED)
+# (E) Handle Card & Gemini Interpretation (PERSONA UPDATE)
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))
 def handle_card_picked(call):
     user_id = call.from_user.id
-    
-    # ခလုတ်ဟောင်းများကို ဖျက်ခြင်း
     try:
         bot.delete_message(chat_id=user_id, message_id=call.message.message_id)
-    except:
-        pass
+    except: pass
     
-    # ကတ်ကျပန်း ရွေးခြင်း
     card = random.choice(TAROT_DECK)
     
-    # ကတ်ပုံ ပို့ခြင်း
     bot.send_chat_action(user_id, 'upload_photo')
-    bot.send_photo(user_id, card['url'], caption=f"🔮 ကျရောက်သောကတ်: <b>{card['name']}</b>", parse_mode="HTML")
+    bot.send_photo(user_id, card['url'], caption=f"🔮 ကျရောက်သောနိမိတ်: <b>{card['name']}</b>", parse_mode="HTML")
     
-    # User မေးခွန်းကို ပြန်ဆွဲထုတ်ခြင်း (မရှိရင် Default ထားမည်)
-    user_question = user_questions.get(user_id, "General Fortune and Advice")
+    user_question = user_questions.get(user_id, "General Fortune")
 
-    # Gemini ကို ဟောခိုင်းခြင်း
     bot.send_chat_action(user_id, 'typing')
     
+    # 🔥 PROMPT ENGINEERING (PERSONA & CONVERSATION LEAD) 🔥
     prompt = f"""
-    You are a professional Tarot Reader speaking Burmese.
+    Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, experienced, and empathetic Burmese male Tarot Astrologer. 
+    You are NOT a robot. You are a human fortune teller talking to a client directly.
     
+    IMPORTANT: Do NOT use the word "ကွယ်" (it sounds unnatural). Use "ဗျ", "ခင်ဗျာ", "နော်" or natural Burmese endings suited for a polite male expert.
+
     Client's Question: "{user_question}"
-    Card Drawn: "{card['name']}"
-    
-    Please interpret this card specifically answering the client's question.
-    Tone: Warm, mystical, and supportive. 
-    Language: Burmese (Myanmar).
-    Use emojis to make it engaging.
+    Tarot Card Drawn: "{card['name']}"
+
+    Instructions:
+    1. Interpret the card strictly based on the client's question in Burmese.
+    2. Use a spoken, warm, and authoritative male tone.
+    3. Don't just give a flat reading. Analyze the situation like a wise counselor.
+    4. CRITICAL: End your response by guiding the conversation. Ask a relevant follow-up question or suggest what they should focus on next to keep them engaged. 
+       (Example: "ဒီတော့ ဒီကိစ္စနဲ့ပတ်သက်ပြီး မောင်ရင် ဘယ်လိုဆက်လုပ်ဖို့ စဉ်းစားထားလဲ?", "နောက်ထပ်ရော ဒီလူနဲ့ပတ်သက်ပြီး ဘာသိချင်သေးလဲ?")
+
+    Language: Burmese (Myanmar) only.
+    Style: Mystical but practical advice.
     """
     
     try:
         response = model.generate_content(prompt)
         bot.send_message(user_id, response.text)
     except Exception as e:
-        # Error အစစ်ကို Log မှာ ထုတ်ပြမယ်
-        print(f"🔥🔥🔥 GEMINI ERROR: {e}") 
-        bot.send_message(user_id, f"System Error: {e}") # User ကိုလည်း အမှားပြမယ်
+        print(f"GEMINI ERROR: {e}") 
+        bot.send_message(user_id, "System Error: ဆရာ့အာရုံ နည်းနည်းနောက်သွားလို့... ခဏနေမှ ပြန်မေးပါနော်။")
 
-# Run Server & Bot
 # ================= 6. MAIN EXECUTION =================
 if __name__ == "__main__":
-    # Server ကို သီးသန့် Thread နဲ့ Run မယ်
     keep_alive()
-    
-    # Bot မ run ခင် Webhook အဟောင်းတွေကို ရှင်းထုတ်မယ် (အရေးကြီး)
     print("Removing old webhooks...")
     bot.remove_webhook()
-    
-    # ခဏစောင့်မယ်
     import time
     time.sleep(1)
-
-    # Bot စ run မယ်
     print("Bot is starting polling...")
     try:
-        # skip_pending=True က အဟောင်းတွေကို ကျော်ပြီး အသစ်ကိုပဲ ယူမယ်
         bot.infinity_polling(skip_pending=True)
     except Exception as e:
         print(f"Critical Error: {e}")

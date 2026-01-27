@@ -43,7 +43,7 @@ DB_FILE = "users.json"
 user_questions = {}
 
 # Images
-CARD_BACK_URL = "https://github.com/sthurein/tarot/blob/main/Tarot.png"
+CARD_BACK_URL = "https://i.postimg.cc/fRjsYWf7/Tarot.png"
 BASE_URL = "https://www.sacred-texts.com/tarot/pkt/img"
 
 # Bank Info

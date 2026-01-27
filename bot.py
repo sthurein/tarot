@@ -8,7 +8,7 @@ import threading
 from flask import Flask, request
 from datetime import datetime, timedelta
 
-# ================= 1. SERVER SETUP =================
+# ================= 1. SERVER SETUP (Render အတွက်) =================
 server = Flask(__name__)
 
 @server.route('/')
@@ -32,13 +32,14 @@ except:
     print("Warning: ADMIN_ID not found.")
     ADMIN_ID = 0 
 
-# AI Setup
+# AI Setup (User စိတ်ကြိုက် Model)
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-flash-latest')
+
 bot = telebot.TeleBot(BOT_TOKEN)
 DB_FILE = "users.json"
 
-# Memory
+# Memory (User Questions)
 user_questions = {}
 
 # Images
@@ -180,7 +181,6 @@ def add_subscription(user_id, days=30):
 def send_welcome(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
-        # ဆရာကြီးပုံစံ နှုတ်ဆက်ခြင်း (ပိုသဘာဝကျအောင် ပြင်ထားသည်)
         bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\nသိချင်တဲ့ အကြောင်းအရာလေးကို စာရိုက်ပြီး မေးနိုင်ပါပြီ။")
     else:
         bot.send_message(message.chat.id, f"မင်္ဂလာပါခင်ဗျာ... ဆရာ့ဆီမှာ ဗေဒင်မေးဖို့ အရင်ဆုံး Member ဝင်ပေးရမှာ ဖြစ်ပါတယ်ဗျ... 🙏\n\n{BANK_INFO}", parse_mode="HTML")
@@ -216,24 +216,66 @@ def admin_decision(call):
         bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"❌ Declined User {target_id}")
         bot.send_message(target_id, "⚠️ ငွေလွှဲပြေစာ မမှန်ကန်ဘူး ဖြစ်နေတယ်။ သေချာပြန်စစ်ပြီး ပြန်ပို့ပေးပါဦး။")
 
-# (D) User Question & Card Selection
+# (D) AI-POWERED CHAT HANDLER (SUPER SMART LOGIC)
 @bot.message_handler(func=lambda message: True)
-def handle_user_question(message):
+def handle_message(message):
     user_id = message.from_user.id
+    user_text = message.text
+
+    # 1. Member စစ်ဆေးခြင်း
     if not check_subscription(user_id):
-        bot.reply_to(message, "ဆရာ့ကို မေးခွန်းမေးဖို့ Member အရင်ဝင်ပေးပါဗျ။ /start ကို နှိပ်ပြီး ဝင်နိုင်ပါတယ်။")
+        bot.reply_to(message, "ဆရာ့ကို စကားပြောဖို့ Member အရင်ဝင်ပေးပါဗျ။ /start ကို နှိပ်ပြီး ဝင်နိုင်ပါတယ်။")
         return
 
-    question = message.text
-    user_questions[user_id] = question
+    # User မေးခွန်းကို မှတ်ထားမည် (နောက်မှ ဟောဖို့အတွက်)
+    user_questions[user_id] = user_text
 
-    markup = InlineKeyboardMarkup()
-    markup.row(InlineKeyboardButton("ကတ် (၁)", callback_data="pick_1"), InlineKeyboardButton("ကတ် (၂)", callback_data="pick_2"), InlineKeyboardButton("ကတ် (၃)", callback_data="pick_3"))
-    markup.row(InlineKeyboardButton("ကတ် (၄)", callback_data="pick_4"), InlineKeyboardButton("ကတ် (၅)", callback_data="pick_5"))
-    
-    # ဆရာကြီးလေသံဖြင့် ကတ်ရွေးခိုင်းခြင်း
-    msg = f"အင်း... '{question}' ဆိုတဲ့ကိစ္စအတွက်...\nဆရာ အာရုံပြုထားလိုက်ပြီ။\n\nကဲ... စိတ်ကို ငြိမ်ငြိမ်ထား၊ ပြီးရင် အောက်က ကတ် ၅ ကတ်ထဲက စိတ်ထဲပေါ်လာတဲ့ တစ်ကတ်ကို ရွေးလိုက်ပါ... 👇"
-    bot.send_photo(user_id, CARD_BACK_URL, caption=msg, reply_markup=markup)
+    # 2. Gemini ကို စကားပြောခိုင်းခြင်း (Logic အားလုံး AI က ဆုံးဖြတ်မည်)
+    bot.send_chat_action(user_id, 'typing')
+
+    prompt = f"""
+    Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, warm, and mystical Burmese Tarot Astrologer.
+    You are NOT a robot. You are a real person talking to a client.
+
+    User Input: "{user_text}"
+
+    Instructions:
+    1. Analyze the User Input carefully.
+    2. IF it is a greeting (Hello, နေကောင်းလား) or small talk -> Reply warmly as Saya Gyi (e.g., "မင်္ဂလာပါဗျာ... ဆရာ နေကောင်းပါတယ်", "ထမင်းစားပြီးပါပြီ").
+    3. IF the user asks "what to ask" (ဘာမေးရမလဲ) -> Suggest 3-4 interesting tarot questions in Burmese.
+    4. IF the user asks a ACTUAL FORTUNE QUESTION (e.g., "Will I get money?", "Love life?", "Health?", "Should I go abroad?") -> 
+       - First, acknowledge the question warmly (e.g., "အင်း... ဒီကိစ္စအတွက် ဆရာ အာရုံပြုပေးရမှာပဲ...").
+       - THEN, strictly append this secret tag at the very end: [SHOW_CARDS]
+
+    Language: Burmese (Myanmar) only.
+    Tone: Polite, authoritative but kind (Use "ဗျ", "နော်", "ခင်ဗျာ"). DO NOT use "ကွယ်" (it sounds unnatural).
+    """
+
+    try:
+        # AI ဆီက အဖြေတောင်းခြင်း
+        response = model.generate_content(prompt)
+        ai_reply = response.text.strip()
+
+        # 3. Secret Tag ပါမပါ စစ်ဆေးခြင်း (Python Logic)
+        if "[SHOW_CARDS]" in ai_reply:
+            # Tag ကို ဖျက်ပြီး စာသားသီးသန့် ပြန်ပြမည်
+            clean_reply = ai_reply.replace("[SHOW_CARDS]", "").strip()
+            
+            # ကတ်ရွေးခလုတ်များ
+            markup = InlineKeyboardMarkup()
+            markup.row(InlineKeyboardButton("ကတ် (၁)", callback_data="pick_1"), InlineKeyboardButton("ကတ် (၂)", callback_data="pick_2"), InlineKeyboardButton("ကတ် (၃)", callback_data="pick_3"))
+            markup.row(InlineKeyboardButton("ကတ် (၄)", callback_data="pick_4"), InlineKeyboardButton("ကတ် (၅)", callback_data="pick_5"))
+            
+            # AI ရဲ့ စာ + ကတ်ရွေးခိုင်းတာ တွဲပို့မည်
+            bot.send_photo(user_id, CARD_BACK_URL, caption=f"{clean_reply}\n\n(အောက်က ကတ် ၅ ကတ်ထဲက တစ်ကတ်ကို ရွေးလိုက်ပါ... 👇)", reply_markup=markup)
+        
+        else:
+            # Tag မပါရင် ရိုးရိုးစကားပြောတာမို့ စာပဲ ပြန်ပို့မည် (ကတ် မပြဘူး)
+            bot.send_message(user_id, ai_reply)
+
+    except Exception as e:
+        print(f"AI CHAT ERROR: {e}")
+        bot.send_message(user_id, "ဆရာ အာရုံနည်းနည်း နောက်နေလို့... ပြန်မေးပေးပါဦးဗျ။")
 
 # (E) Handle Card & Gemini Interpretation (PERSONA UPDATE)
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))
@@ -252,12 +294,11 @@ def handle_card_picked(call):
 
     bot.send_chat_action(user_id, 'typing')
     
-    # 🔥 PROMPT ENGINEERING (PERSONA & CONVERSATION LEAD) 🔥
     prompt = f"""
     Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, experienced, and empathetic Burmese male Tarot Astrologer. 
     You are NOT a robot. You are a human fortune teller talking to a client directly.
     
-    IMPORTANT: Do NOT use the word "ကွယ်" (it sounds unnatural). Use "ဗျ", "ခင်ဗျာ", "နော်" or natural Burmese endings suited for a polite male expert.
+    IMPORTANT: Do NOT use the word "ကွယ်". Use "ဗျ", "ခင်ဗျာ", "နော်" naturally.
 
     Client's Question: "{user_question}"
     Tarot Card Drawn: "{card['name']}"
@@ -266,8 +307,7 @@ def handle_card_picked(call):
     1. Interpret the card strictly based on the client's question in Burmese.
     2. Use a spoken, warm, and authoritative male tone.
     3. Don't just give a flat reading. Analyze the situation like a wise counselor.
-    4. CRITICAL: End your response by guiding the conversation. Ask a relevant follow-up question or suggest what they should focus on next to keep them engaged. 
-       (Example: "ဒီတော့ ဒီကိစ္စနဲ့ပတ်သက်ပြီး မောင်ရင် ဘယ်လိုဆက်လုပ်ဖို့ စဉ်းစားထားလဲ?", "နောက်ထပ်ရော ဒီလူနဲ့ပတ်သက်ပြီး ဘာသိချင်သေးလဲ?")
+    4. CRITICAL: End your response by guiding the conversation. Ask a relevant follow-up question or suggest what they should focus on next to keep them engaged.
 
     Language: Burmese (Myanmar) only.
     Style: Mystical but practical advice.
@@ -278,7 +318,7 @@ def handle_card_picked(call):
         bot.send_message(user_id, response.text)
     except Exception as e:
         print(f"GEMINI ERROR: {e}") 
-        bot.send_message(user_id, "System Error: ဆရာ့အာရုံ နည်းနည်းနောက်သွားလို့... ခဏနေမှ ပြန်မေးပါနော်။")
+        bot.send_message(user_id, "System Error: ဆရာ့အာရုံ နည်းနည်းနောက်သွားလို့... ခဏနေမှ ပြန်မေးပါဗျ။")
 
 # ================= 6. MAIN EXECUTION =================
 if __name__ == "__main__":

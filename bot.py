@@ -8,7 +8,7 @@ import threading
 from flask import Flask, request
 from datetime import datetime, timedelta
 
-# ================= 1. SERVER SETUP (Render အတွက်) =================
+# ================= 1. SERVER SETUP =================
 server = Flask(__name__)
 
 @server.route('/')
@@ -32,30 +32,31 @@ except:
     print("Warning: ADMIN_ID not found.")
     ADMIN_ID = 0 
 
-# AI Setup (User စိတ်ကြိုက် Model)
+# AI Setup
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-flash-latest')
 
 bot = telebot.TeleBot(BOT_TOKEN)
 DB_FILE = "users.json"
 
-# Memory (User Questions)
+# Memory
 user_questions = {}
 
 # Images
 CARD_BACK_URL = "https://i.postimg.cc/fRjsYWf7/Tarot.png"
 BASE_URL = "https://www.sacred-texts.com/tarot/pkt/img"
 
-# Bank Info
+# Bank Info (Booking - 30,000 MMK / 1 Hour)
 BANK_INFO = """
-🔮 <b>Member ဝင်ကြေး - ၁၀,၀၀၀ ကျပ် (၁ လ)</b>
+🔮 <b>ဆရာ့ထံ ဗေဒင်မေးမြန်းခ (Booking)</b>
+💰 <b>နှုန်းထား - ၃၀,၀၀၀ ကျပ် (၁ နာရီ)</b>
 
 ငွေလွှဲရန်:
 ✅ KBZPay: 09-xxxxxxxxx (Name)
 ✅ WavePay: 09-xxxxxxxxx (Name)
 
 ငွေလွှဲပြီးပါက <b>Screenshot</b> ပို့ပေးပါ။
-ဆရာ့တပည့် Admin မှ စစ်ဆေးပြီး ချက်ချင်း ဖွင့်ပေးပါလိမ့်မယ်။
+Admin မှ စစ်ဆေးပြီး ၁ နာရီစာ ဖွင့်ပေးပါလိမ့်မယ်။
 """
 
 # ================= 3. TAROT DECK =================
@@ -145,7 +146,7 @@ TAROT_DECK = [
     {"name": "King of Pentacles", "url": f"{BASE_URL}/peki.jpg"}
 ]
 
-# ================= 4. DATABASE LOGIC =================
+# ================= 4. DATABASE LOGIC (JSON File) =================
 def load_db():
     try:
         with open(DB_FILE, 'r') as f:
@@ -163,15 +164,19 @@ def check_subscription(user_id):
     if str_id not in users: return False
     
     try:
-        expiry_date = datetime.strptime(users[str_id], "%Y-%m-%d")
+        # နာရီ/မိနစ်ပါ ထည့်တွက်ရန် Format (%H:%M:%S)
+        expiry_date = datetime.strptime(users[str_id], "%Y-%m-%d %H:%M:%S")
         return expiry_date >= datetime.now()
     except:
         return False
 
-def add_subscription(user_id, days=30):
+# ၁ နာရီစာ ထည့်ပေးသည့် Function
+def add_subscription(user_id, hours=1):
     users = load_db()
-    new_expiry = datetime.now() + timedelta(days=days)
-    users[str(user_id)] = new_expiry.strftime("%Y-%m-%d")
+    # လက်ရှိအချိန် + ၁ နာရီ
+    new_expiry = datetime.now() + timedelta(hours=hours)
+    # အချိန်ပါမှတ်ရန် Format (%Y-%m-%d %H:%M:%S)
+    users[str(user_id)] = new_expiry.strftime("%Y-%m-%d %H:%M:%S")
     save_db(users)
 
 # ================= 5. BOT HANDLERS =================
@@ -181,9 +186,9 @@ def add_subscription(user_id, days=30):
 def send_welcome(message):
     user_id = message.from_user.id
     if check_subscription(user_id):
-        bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\nသိချင်တဲ့ အကြောင်းအရာလေးကို စာရိုက်ပြီး မေးနိုင်ပါပြီ။")
+        bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\nမိတ်ဆွေရဲ့ Booking အချိန်မကုန်ခင်လေး သိချင်တာတွေ မေးနိုင်ပါပြီ။")
     else:
-        bot.send_message(message.chat.id, f"မင်္ဂလာပါခင်ဗျာ... ဆရာ့ဆီမှာ ဗေဒင်မေးဖို့ အရင်ဆုံး Member ဝင်ပေးရမှာ ဖြစ်ပါတယ်ဗျ... 🙏\n\n{BANK_INFO}", parse_mode="HTML")
+        bot.send_message(message.chat.id, f"မင်္ဂလာပါခင်ဗျာ... ဆရာ့ဆီမှာ ဗေဒင်မေးဖို့ Booking အရင်ယူပေးရမှာ ဖြစ်ပါတယ်ဗျ... 🙏\n\n{BANK_INFO}", parse_mode="HTML")
 
 # (B) Handle Payment Slips
 @bot.message_handler(content_types=['photo'])
@@ -192,11 +197,11 @@ def handle_slip(message):
     bot.reply_to(message, "ကောင်းပါပြီ... ငွေလွှဲပြေစာ ရပါပြီ။ ဆရာ့တပည့် Admin လေးတွေ စစ်ဆေးပေးပါလိမ့်မယ်။ ခဏစောင့်ပေးပါ... ⏳")
     
     markup = InlineKeyboardMarkup()
-    markup.row(InlineKeyboardButton("✅ လက်ခံ", callback_data=f"app_{user_id}"), InlineKeyboardButton("❌ ငြင်းပယ်", callback_data=f"dec_{user_id}"))
+    markup.row(InlineKeyboardButton("✅ လက်ခံ (၁ နာရီ)", callback_data=f"app_{user_id}"), InlineKeyboardButton("❌ ငြင်းပယ်", callback_data=f"dec_{user_id}"))
     
     try:
         file_id = message.photo[-1].file_id
-        caption = f"🔔 <b>New Payment!</b>\nID: <code>{user_id}</code>\nName: {message.from_user.first_name}"
+        caption = f"🔔 <b>New Booking (30,000 MMK)!</b>\nID: <code>{user_id}</code>\nName: {message.from_user.first_name}"
         bot.send_photo(ADMIN_ID, file_id, caption=caption, reply_markup=markup, parse_mode="HTML")
     except Exception as e:
         print(f"Error sending to admin: {e}")
@@ -208,127 +213,49 @@ def admin_decision(call):
     action, target_id = call.data.split("_")
     
     if action == "app":
-        add_subscription(target_id)
-        bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"✅ Approved User {target_id}")
-        bot.send_message(target_id, "🎉 ကဲ... Member ဝင်တာ အောင်မြင်ပါပြီဗျာ။\nဆရာ့ကို သိချင်တဲ့ မေးခွန်းတွေ စပြီး မေးနိုင်ပါပြီ။")
+        add_subscription(target_id, hours=1) # ၁ နာရီစာ
+        bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"✅ Approved User {target_id} for 1 Hour")
+        bot.send_message(target_id, "🎉 Booking အောင်မြင်ပါပြီဗျာ။\nအခုချိန်ကစပြီး (၁) နာရီတိတိ မေးခွန်းတွေ မေးနိုင်ပါပြီ။")
         
     elif action == "dec":
         bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"❌ Declined User {target_id}")
         bot.send_message(target_id, "⚠️ ငွေလွှဲပြေစာ မမှန်ကန်ဘူး ဖြစ်နေတယ်။ သေချာပြန်စစ်ပြီး ပြန်ပို့ပေးပါဦး။")
 
-# (D) AI-POWERED CHAT HANDLER (SUPER SMART LOGIC)
+# (D) AI-POWERED CHAT HANDLER (Smart Logic)
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     user_id = message.from_user.id
     user_text = message.text
 
-    # 1. Member စစ်ဆေးခြင်း
+    # 1. Booking စစ်ဆေးခြင်း
     if not check_subscription(user_id):
-        bot.reply_to(message, "ဆရာ့ကို စကားပြောဖို့ Member အရင်ဝင်ပေးပါဗျ။ /start ကို နှိပ်ပြီး ဝင်နိုင်ပါတယ်။")
+        bot.reply_to(message, "Booking သက်တမ်း ကုန်ဆုံးသွားပါပြီ (သို့) မရှိသေးပါဗျ။\nထပ်မေးလိုပါက /start ကို နှိပ်ပြီး ငွေသွင်းကာ Booking ပြန်ယူပေးပါခင်ဗျာ။")
         return
 
-    # User မေးခွန်းကို မှတ်ထားမည် (နောက်မှ ဟောဖို့အတွက်)
     user_questions[user_id] = user_text
 
-    # 2. Gemini ကို စကားပြောခိုင်းခြင်း (Logic အားလုံး AI က ဆုံးဖြတ်မည်)
     bot.send_chat_action(user_id, 'typing')
 
     prompt = f"""
-    Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, warm, and mystical Burmese Tarot Astrologer.
+    Role: You are 'Saya' (ဆရာ), a wise, warm, and mystical Burmese Tarot Astrologer.
     You are NOT a robot. You are a real person talking to a client.
 
     User Input: "{user_text}"
 
     Instructions:
-    1. Analyze the User Input carefully.
-    2. IF it is a greeting (Hello, နေကောင်းလား) or small talk -> Reply warmly as Saya Gyi (e.g., "မင်္ဂလာပါဗျာ... ဆရာ နေကောင်းပါတယ်", "ထမင်းစားပြီးပါပြီ").
-    3. IF the user asks "what to ask" (ဘာမေးရမလဲ) -> Suggest 3-4 interesting tarot questions in Burmese.
-    4. IF the user asks a ACTUAL FORTUNE QUESTION (e.g., "Will I get money?", "Love life?", "Health?", "Should I go abroad?") -> 
-       - First, acknowledge the question warmly (e.g., "အင်း... ဒီကိစ္စအတွက် ဆရာ အာရုံပြုပေးရမှာပဲ...").
+    1. Analyze the User Input.
+    2. IF it is a greeting or small talk -> Reply warmly as Saya Gyi.
+    3. IF the user asks "what to ask" -> Suggest 3-4 interesting tarot questions.
+    4. IF the user asks a ACTUAL FORTUNE QUESTION -> 
+       - First, acknowledge the question warmly.
        - THEN, strictly append this secret tag at the very end: [SHOW_CARDS]
 
     Language: Burmese (Myanmar) only.
-    Tone: Polite, authoritative but kind (Use "ဗျ", "နော်", "ခင်ဗျာ"). DO NOT use "ကွယ်" (it sounds unnatural).
+    Tone: Polite, authoritative but kind (Use "ဗျ", "နော်", "ခင်ဗျာ"). DO NOT use "ကွယ်".
     """
 
     try:
-        # AI ဆီက အဖြေတောင်းခြင်း
         response = model.generate_content(prompt)
         ai_reply = response.text.strip()
 
-        # 3. Secret Tag ပါမပါ စစ်ဆေးခြင်း (Python Logic)
-        if "[SHOW_CARDS]" in ai_reply:
-            # Tag ကို ဖျက်ပြီး စာသားသီးသန့် ပြန်ပြမည်
-            clean_reply = ai_reply.replace("[SHOW_CARDS]", "").strip()
-            
-            # ကတ်ရွေးခလုတ်များ
-            markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("ကတ် (၁)", callback_data="pick_1"), InlineKeyboardButton("ကတ် (၂)", callback_data="pick_2"), InlineKeyboardButton("ကတ် (၃)", callback_data="pick_3"))
-            markup.row(InlineKeyboardButton("ကတ် (၄)", callback_data="pick_4"), InlineKeyboardButton("ကတ် (၅)", callback_data="pick_5"))
-            
-            # AI ရဲ့ စာ + ကတ်ရွေးခိုင်းတာ တွဲပို့မည်
-            bot.send_photo(user_id, CARD_BACK_URL, caption=f"{clean_reply}\n\n(အောက်က ကတ် ၅ ကတ်ထဲက တစ်ကတ်ကို ရွေးလိုက်ပါ... 👇)", reply_markup=markup)
-        
-        else:
-            # Tag မပါရင် ရိုးရိုးစကားပြောတာမို့ စာပဲ ပြန်ပို့မည် (ကတ် မပြဘူး)
-            bot.send_message(user_id, ai_reply)
-
-    except Exception as e:
-        print(f"AI CHAT ERROR: {e}")
-        bot.send_message(user_id, "ဆရာ အာရုံနည်းနည်း နောက်နေလို့... ပြန်မေးပေးပါဦးဗျ။")
-
-# (E) Handle Card & Gemini Interpretation (PERSONA UPDATE)
-@bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))
-def handle_card_picked(call):
-    user_id = call.from_user.id
-    try:
-        bot.delete_message(chat_id=user_id, message_id=call.message.message_id)
-    except: pass
-    
-    card = random.choice(TAROT_DECK)
-    
-    bot.send_chat_action(user_id, 'upload_photo')
-    bot.send_photo(user_id, card['url'], caption=f"🔮 ကျရောက်သောနိမိတ်: <b>{card['name']}</b>", parse_mode="HTML")
-    
-    user_question = user_questions.get(user_id, "General Fortune")
-
-    bot.send_chat_action(user_id, 'typing')
-    
-    prompt = f"""
-    Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, experienced, and empathetic Burmese male Tarot Astrologer. 
-    You are NOT a robot. You are a human fortune teller talking to a client directly.
-    
-    IMPORTANT: Do NOT use the word "ကွယ်". Use "ဗျ", "ခင်ဗျာ", "နော်" naturally.
-
-    Client's Question: "{user_question}"
-    Tarot Card Drawn: "{card['name']}"
-
-    Instructions:
-    1. Interpret the card strictly based on the client's question in Burmese.
-    2. Use a spoken, warm, and authoritative male tone.
-    3. Don't just give a flat reading. Analyze the situation like a wise counselor.
-    4. CRITICAL: End your response by guiding the conversation. Ask a relevant follow-up question or suggest what they should focus on next to keep them engaged.
-
-    Language: Burmese (Myanmar) only.
-    Style: Mystical but practical advice.
-    """
-    
-    try:
-        response = model.generate_content(prompt)
-        bot.send_message(user_id, response.text)
-    except Exception as e:
-        print(f"GEMINI ERROR: {e}") 
-        bot.send_message(user_id, "System Error: ဆရာ့အာရုံ နည်းနည်းနောက်သွားလို့... ခဏနေမှ ပြန်မေးပါဗျ။")
-
-# ================= 6. MAIN EXECUTION =================
-if __name__ == "__main__":
-    keep_alive()
-    print("Removing old webhooks...")
-    bot.remove_webhook()
-    import time
-    time.sleep(1)
-    print("Bot is starting polling...")
-    try:
-        bot.infinity_polling(skip_pending=True)
-    except Exception as e:
-        print(f"Critical Error: {e}")
+        if "[SHOW_

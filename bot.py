@@ -236,6 +236,7 @@ def handle_message(message):
 
     bot.send_chat_action(user_id, 'typing')
 
+    # Prompt ကို သေချာပြင်ထားပါသည်
     prompt = f"""
     Role: You are 'Saya' (ဆရာ), a wise, warm, and mystical Burmese Tarot Astrologer.
     You are NOT a robot. You are a real person talking to a client.
@@ -258,4 +259,72 @@ def handle_message(message):
         response = model.generate_content(prompt)
         ai_reply = response.text.strip()
 
-        if "[SHOW_
+        if "[SHOW_CARDS]" in ai_reply:
+            clean_reply = ai_reply.replace("[SHOW_CARDS]", "").strip()
+            
+            markup = InlineKeyboardMarkup()
+            markup.row(InlineKeyboardButton("ကတ် (၁)", callback_data="pick_1"), InlineKeyboardButton("ကတ် (၂)", callback_data="pick_2"), InlineKeyboardButton("ကတ် (၃)", callback_data="pick_3"))
+            markup.row(InlineKeyboardButton("ကတ် (၄)", callback_data="pick_4"), InlineKeyboardButton("ကတ် (၅)", callback_data="pick_5"))
+            
+            bot.send_photo(user_id, CARD_BACK_URL, caption=f"{clean_reply}\n\n(အောက်က ကတ် ၅ ကတ်ထဲက တစ်ကတ်ကို ရွေးလိုက်ပါ... 👇)", reply_markup=markup)
+        
+        else:
+            bot.send_message(user_id, ai_reply)
+
+    except Exception as e:
+        print(f"AI CHAT ERROR: {e}")
+        bot.send_message(user_id, "ဆရာ အာရုံနည်းနည်း နောက်နေလို့... ပြန်မေးပေးပါဦးဗျ။")
+
+# (E) Handle Card & Interpretation
+@bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))
+def handle_card_picked(call):
+    user_id = call.from_user.id
+    try:
+        bot.delete_message(chat_id=user_id, message_id=call.message.message_id)
+    except: pass
+    
+    card = random.choice(TAROT_DECK)
+    
+    bot.send_chat_action(user_id, 'upload_photo')
+    bot.send_photo(user_id, card['url'], caption=f"🔮 ကျရောက်သောနိမိတ်: <b>{card['name']}</b>", parse_mode="HTML")
+    
+    user_question = user_questions.get(user_id, "General Fortune")
+
+    bot.send_chat_action(user_id, 'typing')
+    
+    prompt = f"""
+    Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, experienced Burmese male Tarot Astrologer. 
+    
+    IMPORTANT: Do NOT use "ကွယ်". Use "ဗျ", "ခင်ဗျာ", "နော်" naturally.
+
+    Client's Question: "{user_question}"
+    Tarot Card Drawn: "{card['name']}"
+
+    Instructions:
+    1. Interpret the card strictly based on the client's question in Burmese.
+    2. Use a spoken, warm, and authoritative male tone.
+    3. Analyze like a wise counselor.
+    4. CRITICAL: End with a follow-up question to keep them engaged.
+
+    Language: Burmese (Myanmar) only.
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        bot.send_message(user_id, response.text)
+    except Exception as e:
+        print(f"GEMINI ERROR: {e}") 
+        bot.send_message(user_id, "System Error: ဆရာ့အာရုံ နည်းနည်းနောက်သွားလို့... ခဏနေမှ ပြန်မေးပါဗျ။")
+
+# ================= 6. MAIN EXECUTION =================
+if __name__ == "__main__":
+    keep_alive()
+    print("Removing old webhooks...")
+    bot.remove_webhook()
+    import time
+    time.sleep(1)
+    print("Bot is starting polling...")
+    try:
+        bot.infinity_polling(skip_pending=True)
+    except Exception as e:
+        print(f"Critical Error: {e}")

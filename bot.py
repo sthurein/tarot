@@ -147,7 +147,7 @@ TAROT_DECK = [
 ]
 
 # ================= 4. DATABASE & FREE PERIOD LOGIC =================
-FREE_START = datetime(2026, 2, 17)
+FREE_START = datetime(2026, 2, 16)
 FREE_END = datetime(2026, 2, 23, 23, 59, 59)
 
 def is_free_period():

@@ -32,7 +32,7 @@ except:
     print("Warning: ADMIN_ID not found.")
     ADMIN_ID = 0 
 
-# AI Setup
+# AI Setup (ERROR ကင်းရန် ပြင်ဆင်ထားသည်)
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-pro-latest')
 
@@ -46,7 +46,7 @@ user_questions = {}
 CARD_BACK_URL = "https://i.postimg.cc/fRjsYWf7/Tarot.png"
 BASE_URL = "https://www.sacred-texts.com/tarot/pkt/img"
 
-# Bank Info (Booking - 30,000 MMK / 1 Hour)
+# Bank Info
 BANK_INFO = """
 🔮 <b>ဆရာ့ထံ ဗေဒင်မေးမြန်းခ (Booking)</b>
 💰 <b>နှုန်းထား - ၁၀,၀၀၀ ကျပ် (၁ နာရီ)</b>
@@ -146,7 +146,15 @@ TAROT_DECK = [
     {"name": "King of Pentacles", "url": f"{BASE_URL}/peki.jpg"}
 ]
 
-# ================= 4. DATABASE LOGIC (JSON File) =================
+# ================= 4. DATABASE & FREE PERIOD LOGIC =================
+FREE_START = datetime(2026, 2, 17)
+FREE_END = datetime(2026, 2, 23, 23, 59, 59)
+
+def is_free_period():
+    # Render Server ရဲ့ အချိန်ကို မြန်မာစံတော်ချိန် (UTC + 6:30) သို့ ပြောင်းပြီး စစ်ဆေးသည်
+    mm_time = datetime.utcnow() + timedelta(hours=6, minutes=30)
+    return FREE_START <= mm_time <= FREE_END
+
 def load_db():
     try:
         with open(DB_FILE, 'r') as f:
@@ -159,23 +167,24 @@ def save_db(data):
         json.dump(data, f, indent=4)
 
 def check_subscription(user_id):
+    # Free ကာလဖြစ်နေပါက Booking မလိုဘဲ အားလုံးကို ဝင်ခွင့်ပြုမည်
+    if is_free_period():
+        return True
+
+    # Free ကာလ ကျော်လွန်သွားပါက ပုံမှန်အတိုင်း Booking စစ်မည်
     users = load_db()
     str_id = str(user_id)
     if str_id not in users: return False
     
     try:
-        # နာရီ/မိနစ်ပါ ထည့်တွက်ရန် Format (%H:%M:%S)
         expiry_date = datetime.strptime(users[str_id], "%Y-%m-%d %H:%M:%S")
         return expiry_date >= datetime.now()
     except:
         return False
 
-# ၁ နာရီစာ ထည့်ပေးသည့် Function
 def add_subscription(user_id, hours=1):
     users = load_db()
-    # လက်ရှိအချိန် + ၁ နာရီ
     new_expiry = datetime.now() + timedelta(hours=hours)
-    # အချိန်ပါမှတ်ရန် Format (%Y-%m-%d %H:%M:%S)
     users[str(user_id)] = new_expiry.strftime("%Y-%m-%d %H:%M:%S")
     save_db(users)
 
@@ -185,8 +194,17 @@ def add_subscription(user_id, hours=1):
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.from_user.id
-    if check_subscription(user_id):
+    
+    # Free ကာလဖြစ်နေလျှင် အထူးမက်ဆေ့ချ် ပြမည်
+    if is_free_period():
+        msg = "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\n\n🎉 <b>အထူး Promotion အနေဖြင့် ယခုကာလ (၁၇.၂.၂၀၂၆ မှ ၂၃.၂.၂၀၂၆ အထိ) ကို အခမဲ့ ဖွင့်ပေးထားပါတယ်ခင်ဗျာ။</b>\n\nစိတ်ထဲ သိချင်တာလေးတွေကို စာရိုက်ပြီး လွတ်လပ်စွာ မေးမြန်းနိုင်ပါပြီ။"
+        bot.reply_to(message, msg, parse_mode="HTML")
+    
+    # Booking ရှိထားသူဖြစ်လျှင်
+    elif check_subscription(user_id):
         bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\nမိတ်ဆွေရဲ့ Booking အချိန်မကုန်ခင်လေး သိချင်တာတွေ မေးနိုင်ပါပြီ။")
+    
+    # Booking မရှိလျှင် ငွေလွှဲရန်ပြမည်
     else:
         bot.send_message(message.chat.id, f"မင်္ဂလာပါခင်ဗျာ... ဆရာ့ဆီမှာ ဗေဒင်မေးဖို့ Booking အရင်ယူပေးရမှာ ဖြစ်ပါတယ်ဗျ... 🙏\n\n{BANK_INFO}", parse_mode="HTML")
 
@@ -194,6 +212,12 @@ def send_welcome(message):
 @bot.message_handler(content_types=['photo'])
 def handle_slip(message):
     user_id = message.from_user.id
+    
+    # Free ကာလဖြစ်နေရင် ပိုက်ဆံသွင်းစရာမလိုကြောင်း အသိပေးမည်
+    if is_free_period():
+        bot.reply_to(message, "🎉 အခုက <b>Free Promotion ကာလ (၁၇ ရက်မှ ၂၃ ရက်)</b> ဖြစ်တဲ့အတွက် ငွေသွင်းစရာ မလိုသေးပါဘူးဗျာ... အခမဲ့ စတင်မေးမြန်းနိုင်ပါပြီ။", parse_mode="HTML")
+        return
+
     bot.reply_to(message, "ကောင်းပါပြီ... ငွေလွှဲပြေစာ ရပါပြီ။ ဆရာ့တပည့် Admin လေးတွေ စစ်ဆေးပေးပါလိမ့်မယ်။ ခဏစောင့်ပေးပါ... ⏳")
     
     markup = InlineKeyboardMarkup()
@@ -201,7 +225,7 @@ def handle_slip(message):
     
     try:
         file_id = message.photo[-1].file_id
-        caption = f"🔔 <b>New Booking (30,000 MMK)!</b>\nID: <code>{user_id}</code>\nName: {message.from_user.first_name}"
+        caption = f"🔔 <b>New Booking (10,000 MMK)!</b>\nID: <code>{user_id}</code>\nName: {message.from_user.first_name}"
         bot.send_photo(ADMIN_ID, file_id, caption=caption, reply_markup=markup, parse_mode="HTML")
     except Exception as e:
         print(f"Error sending to admin: {e}")
@@ -213,7 +237,7 @@ def admin_decision(call):
     action, target_id = call.data.split("_")
     
     if action == "app":
-        add_subscription(target_id, hours=1) # ၁ နာရီစာ
+        add_subscription(target_id, hours=1)
         bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"✅ Approved User {target_id} for 1 Hour")
         bot.send_message(target_id, "🎉 Booking အောင်မြင်ပါပြီဗျာ။\nအခုချိန်ကစပြီး (၁) နာရီတိတိ မေးခွန်းတွေ မေးနိုင်ပါပြီ။")
         
@@ -221,13 +245,13 @@ def admin_decision(call):
         bot.edit_message_caption(chat_id=ADMIN_ID, message_id=call.message.message_id, caption=f"❌ Declined User {target_id}")
         bot.send_message(target_id, "⚠️ ငွေလွှဲပြေစာ မမှန်ကန်ဘူး ဖြစ်နေတယ်။ သေချာပြန်စစ်ပြီး ပြန်ပို့ပေးပါဦး။")
 
-# (D) AI-POWERED CHAT HANDLER (Smart Logic)
+# (D) AI-POWERED CHAT HANDLER
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     user_id = message.from_user.id
     user_text = message.text
 
-    # 1. Booking စစ်ဆေးခြင်း
+    # 1. Access စစ်ဆေးခြင်း
     if not check_subscription(user_id):
         bot.reply_to(message, "Booking သက်တမ်း ကုန်ဆုံးသွားပါပြီ (သို့) မရှိသေးပါဗျ။\nထပ်မေးလိုပါက /start ကို နှိပ်ပြီး ငွေသွင်းကာ Booking ပြန်ယူပေးပါခင်ဗျာ။")
         return
@@ -236,7 +260,6 @@ def handle_message(message):
 
     bot.send_chat_action(user_id, 'typing')
 
-    # Prompt ကို သေချာပြင်ထားပါသည်
     prompt = f"""
     Role: You are 'Saya' (ဆရာ), a wise, warm, and mystical Burmese Tarot Astrologer.
     You are NOT a robot. You are a real person talking to a client.
@@ -273,7 +296,7 @@ def handle_message(message):
 
     except Exception as e:
         print(f"AI CHAT ERROR: {e}")
-        bot.send_message(user_id, "System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... ငွေသွင်းထားတဲ့ အချိန်အတွက် ပြန်ထည့်ပေးပါမယ်။  အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျာ")
+        bot.send_message(user_id, "System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျာ")
 
 # (E) Handle Card & Interpretation
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))
@@ -314,7 +337,7 @@ def handle_card_picked(call):
         bot.send_message(user_id, response.text)
     except Exception as e:
         print(f"GEMINI ERROR: {e}") 
-        bot.send_message(user_id, "System Error: ဆရာ့အာရုံ နည်းနည်းနောက်သွားလို့... ခဏနေမှ ပြန်မေးပါဗျ။")
+        bot.send_message(user_id, "System Error: System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျာ။")
 
 # ================= 6. MAIN EXECUTION =================
 if __name__ == "__main__":

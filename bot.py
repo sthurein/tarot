@@ -52,8 +52,8 @@ BANK_INFO = """
 💰 <b>နှုန်းထား - ၁၀,၀၀၀ ကျပ် (၁ နာရီ)</b>
 
 ငွေလွှဲရန်:
-✅ KBZPay: 09-xxxxxxxxx (Name)
-✅ WavePay: 09-xxxxxxxxx (Name)
+✅ KBZPay: 09444456145 (Soe Thurein Tun)
+✅ WavePay: 09444456145 (Soe Thurein Tun)
 
 ငွေလွှဲပြီးပါက <b>Screenshot</b> ပို့ပေးပါ။
 Admin မှ စစ်ဆေးပြီး ၁ နာရီစာ ဖွင့်ပေးပါလိမ့်မယ်။
@@ -273,7 +273,7 @@ def handle_message(message):
 
     except Exception as e:
         print(f"AI CHAT ERROR: {e}")
-        bot.send_message(user_id, "ဆရာ အာရုံနည်းနည်း နောက်နေလို့... ပြန်မေးပေးပါဦးဗျ။")
+        bot.send_message(user_id, "System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... ငွေသွင်းထားတဲ့ အချိန်အတွက် ပြန်ထည့်ပေးပါမယ်။  အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျာ")
 
 # (E) Handle Card & Interpretation
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))

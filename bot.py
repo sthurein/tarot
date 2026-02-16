@@ -49,7 +49,7 @@ BASE_URL = "https://www.sacred-texts.com/tarot/pkt/img"
 # Bank Info (Booking - 30,000 MMK / 1 Hour)
 BANK_INFO = """
 🔮 <b>ဆရာ့ထံ ဗေဒင်မေးမြန်းခ (Booking)</b>
-💰 <b>နှုန်းထား - ၃၀,၀၀၀ ကျပ် (၁ နာရီ)</b>
+💰 <b>နှုန်းထား - ၁၀,၀၀၀ ကျပ် (၁ နာရီ)</b>
 
 ငွေလွှဲရန်:
 ✅ KBZPay: 09-xxxxxxxxx (Name)

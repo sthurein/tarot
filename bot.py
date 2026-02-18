@@ -32,7 +32,7 @@ except:
     print("Warning: ADMIN_ID not found.")
     ADMIN_ID = 0 
 
-# AI Setup
+# AI Setup (Model ပြင်ဆင်ထားသည်)
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-flash-latest')
 
@@ -46,7 +46,7 @@ user_questions = {}
 CARD_BACK_URL = "https://i.postimg.cc/fRjsYWf7/Tarot.png"
 BASE_URL = "https://www.sacred-texts.com/tarot/pkt/img"
 
-# Bank Info
+# Bank Info (Booking - 30,000 MMK / 1 Hour)
 BANK_INFO = """
 🔮 <b>ဆရာ့ထံ ဗေဒင်မေးမြန်းခ (Booking)</b>
 💰 <b>နှုန်းထား - ၁၀,၀၀၀ ကျပ် (၁ နာရီ)</b>
@@ -150,7 +150,6 @@ TAROT_DECK = [
 FREE_START = datetime(2026, 2, 17)
 FREE_END = datetime(2026, 2, 23, 23, 59, 59)
 
-# မြန်မာစံတော်ချိန် ပြောင်းပေးသော Function
 def mm_now():
     return datetime.utcnow() + timedelta(hours=6, minutes=30)
 
@@ -179,30 +178,26 @@ def check_subscription(user_id):
     except:
         return False
 
-# ၁ နာရီစာ Booking ထည့်ပေးသည့် Function
 def add_subscription(user_id, hours=1):
     users = load_db()
     new_expiry = mm_now() + timedelta(hours=hours)
     users[str(user_id)] = new_expiry.strftime("%Y-%m-%d %H:%M:%S")
     save_db(users)
 
-# နေ့စဉ် 1 Hour Free ယူသည့် Function
 def claim_daily_free_hour(user_id):
     if not is_free_period():
         return False, "Not free period"
     
     users = load_db()
-    today_str = mm_now().strftime("%Y-%m-%d") # ဒီနေ့ရက်စွဲ (ဥပမာ 2026-02-17)
+    today_str = mm_now().strftime("%Y-%m-%d") 
     
-    # ဒီနေ့ Free ယူပြီးသားလား စစ်မည်
     last_claimed = users.get(str(user_id) + "_free_date")
     if last_claimed == today_str:
         return False, "Already claimed today"
     
-    # မယူရသေးရင် (၁) နာရီ ထည့်ပေးမည်
     new_expiry = mm_now() + timedelta(hours=1)
     users[str(user_id)] = new_expiry.strftime("%Y-%m-%d %H:%M:%S")
-    users[str(user_id) + "_free_date"] = today_str # ဒီနေ့ ယူပြီးကြောင်း မှတ်သားမည်
+    users[str(user_id) + "_free_date"] = today_str 
     save_db(users)
     return True, "Success"
 
@@ -213,18 +208,15 @@ def claim_daily_free_hour(user_id):
 def send_welcome(message):
     user_id = message.from_user.id
     
-    # Booking ရှိပြီးသားသူဆိုရင်
     if check_subscription(user_id):
         bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\nမိတ်ဆွေရဲ့ Booking အချိန်မကုန်ခင်လေး သိချင်တာတွေ မေးနိုင်ပါပြီ။")
     else:
-        # Booking မရှိဘူး + Free Promotion ကာလဖြစ်နေရင်
         if is_free_period():
             success, _ = claim_daily_free_hour(user_id)
             if success:
                 bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\n\n🎉 <b>အထူး Promotion အနေဖြင့် ဒီနေ့အတွက် (၁) နာရီ အခမဲ့ ဖွင့်ပေးလိုက်ပါပြီခင်ဗျာ။</b>\n\nစိတ်ထဲ သိချင်တာလေးတွေကို စာရိုက်ပြီး လွတ်လပ်စွာ မေးမြန်းနိုင်ပါပြီ။", parse_mode="HTML")
             else:
                 bot.reply_to(message, "မင်္ဂလာပါဗျာ...\n\nဒီနေ့အတွက် (၁) နာရီ Free သုံးပြီးသွားပါပြီဗျာ။ <b>မနက်ဖြန်မှ ထပ်မံ အခမဲ့ ရယူနိုင်ပါတယ်</b> (သို့မဟုတ်) အောက်ပါအတိုင်း ငွေသွင်းပြီး Booking ချက်ချင်း ပြန်ယူနိုင်ပါတယ်။\n\n" + BANK_INFO, parse_mode="HTML")
-        # Free ကာလ ပြီးသွားရင် ရိုးရိုး ငွေလွှဲတောင်းမည်
         else:
             bot.send_message(message.chat.id, f"မင်္ဂလာပါခင်ဗျာ... ဆရာ့ဆီမှာ ဗေဒင်မေးဖို့ Booking အရင်ယူပေးရမှာ ဖြစ်ပါတယ်ဗျ... 🙏\n\n{BANK_INFO}", parse_mode="HTML")
 
@@ -267,7 +259,6 @@ def handle_message(message):
 
     # Access စစ်ဆေးခြင်း
     if not check_subscription(user_id):
-        # ဝင်ခွင့်မရှိရင် Free ကာလဟုတ်မဟုတ် ထပ်စစ်ပြီး Auto ပေးမည်
         if is_free_period():
             success, _ = claim_daily_free_hour(user_id)
             if success:
@@ -281,6 +272,8 @@ def handle_message(message):
 
     user_questions[user_id] = user_text
 
+    # --- ချက်ချင်း ပြန်ပို့မည့် စောင့်ဆိုင်းရန် စာသား (UX) ---
+    temp_msg = bot.reply_to(message, "⏳ <i>ဆရာအာရုံပြုနေပါတယ်။ ပြီးတော့ ဟောကြားချက်တွေကို စာစီပေးနေလို့ ခနစောင့်ပေးပါ။</i>", parse_mode="HTML")
     bot.send_chat_action(user_id, 'typing')
 
     prompt = f"""
@@ -312,14 +305,17 @@ def handle_message(message):
             markup.row(InlineKeyboardButton("ကတ် (၁)", callback_data="pick_1"), InlineKeyboardButton("ကတ် (၂)", callback_data="pick_2"), InlineKeyboardButton("ကတ် (၃)", callback_data="pick_3"))
             markup.row(InlineKeyboardButton("ကတ် (၄)", callback_data="pick_4"), InlineKeyboardButton("ကတ် (၅)", callback_data="pick_5"))
             
+            # ကတ်ရွေးခိုင်းမည်ဆိုပါက ယာယီစာတန်းကို ဖျက်ပစ်မည်
+            bot.delete_message(chat_id=user_id, message_id=temp_msg.message_id)
             bot.send_photo(user_id, CARD_BACK_URL, caption=f"{clean_reply}\n\n(အောက်က ကတ် ၅ ကတ်ထဲက တစ်ကတ်ကို ရွေးလိုက်ပါ... 👇)", reply_markup=markup)
         
         else:
-            bot.send_message(user_id, ai_reply)
+            # ရိုးရိုးစကားပြန်ပြောမည်ဆိုပါက ယာယီစာတန်းနေရာတွင် အစားထိုးမည်
+            bot.edit_message_text(chat_id=user_id, message_id=temp_msg.message_id, text=ai_reply)
 
     except Exception as e:
         print(f"AI CHAT ERROR: {e}")
-        bot.send_message(user_id, "System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... အချိန် ၁ နာရီစာပြန်ထည့်ပေးပါမယ်။​ ယခင်ငွေလွှဲထားတဲ့ Screen shoot လေးပြန်ပို့ပေးပါခင်ဗျာ။ အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျာ")
+        bot.edit_message_text(chat_id=user_id, message_id=temp_msg.message_id, text="System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... အချိန် ၁ နာရီစာပြန်ထည့်ပေးပါမယ်။ ယခင်ငွေလွှဲထားတဲ့ Screen shoot လေးပြန်ပို့ပေးပါခင်ဗျာ။ အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျာ")
 
 # (E) Handle Card & Interpretation
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))
@@ -332,16 +328,17 @@ def handle_card_picked(call):
     card = random.choice(TAROT_DECK)
     
     bot.send_chat_action(user_id, 'upload_photo')
-    bot.send_photo(user_id, card['url'], caption=f"🔮 ကျရောက်သောနိမိတ်: <b>{card['name']}</b>", parse_mode="HTML")
+    # --- ကတ်ပြရင်း စောင့်ဆိုင်းရန် စာသား ထပ်ထည့်ထားပါသည် ---
+    card_msg = bot.send_photo(user_id, card['url'], caption=f"🔮 ကျရောက်သောနိမိတ်: <b>{card['name']}</b>\n\n⏳ <i>ဆရာအာရုံပြုနေပါတယ်။ ပြီးတော့ ဟောကြားချက်တွေကို စာစီပေးနေလို့ ခနစောင့်ပေးပါ။</i>", parse_mode="HTML")
     
     user_question = user_questions.get(user_id, "General Fortune")
 
     bot.send_chat_action(user_id, 'typing')
     
     prompt = f"""
-    Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, experienced Burmese male Tarot Astrologer. 
+    Role: You are 'Saya' (ဆရာ), a wise, experienced Burmese male Tarot Astrologer. 
     
-    IMPORTANT: Do NOT use "ကွယ်". Use "ဗျ", "ခင်ဗျာ", "နော်" naturally.
+    IMPORTANT: Do NOT use "ကွယ်" "ခင်ဗျား" "မင်း" . Use "ဗျ", "ခင်ဗျာ", "နော်" naturally. နာမ်စားတွေကို "သင်" "သင့်" သုံးပါ။ 
 
     Client's Question: "{user_question}"
     Tarot Card Drawn: "{card['name']}"
@@ -358,9 +355,11 @@ def handle_card_picked(call):
     try:
         response = model.generate_content(prompt)
         bot.send_message(user_id, response.text)
+        # အဖြေပို့ပြီးပါက ကတ်ပုံအောက်က စောင့်ဆိုင်းရန်စာသားကို ဖျက်ပေးမည်
+        bot.edit_message_caption(chat_id=user_id, message_id=card_msg.message_id, caption=f"🔮 ကျရောက်သောနိမိတ်: <b>{card['name']}</b>", parse_mode="HTML")
     except Exception as e:
         print(f"GEMINI ERROR: {e}") 
-        bot.send_message(user_id, "System Error: System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... အချိန် ၁ နာရီစာပြန်ထည့်ပေးပါမယ်။​ ယခင်ငွေလွှဲထားတဲ့ Screen shoot လေးပြန်ပို့ပေးပါခင်ဗျာ။ အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျ")
+        bot.send_message(user_id, "System Error: System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... အချိန် ၁ နာရီစာပြန်ထည့်ပေးပါမယ်။ ယခင်ငွေလွှဲထားတဲ့ Screen shoot လေးပြန်ပို့ပေးပါခင်ဗျာ။ အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျ")
 
 # ================= 6. MAIN EXECUTION =================
 if __name__ == "__main__":

@@ -357,7 +357,7 @@ def handle_card_picked(call):
     bot.send_chat_action(user_id, 'typing')
     
     prompt = f"""
-    Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, experienced Burmese male Tarot Astrologer. 
+    Role: You are 'Saya' (ဆရာ), a wise, experienced Burmese male Tarot Astrologer. 
     
     IMPORTANT: Do NOT use "ကွယ်" "ခင်ဗျား" "မင်း" . Use "ဗျ", "ခင်ဗျာ", "နော်" naturally. နာမ်စားတွေကို "သင်" "သင့်" သုံးပါ။ 
 

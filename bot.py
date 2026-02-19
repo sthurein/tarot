@@ -57,6 +57,9 @@ BANK_INFO = """
 
 ငွေလွှဲပြီးပါက <b>Screenshot</b> ပို့ပေးပါ။
 Admin မှ စစ်ဆေးပြီး ၁ နာရီစာ ဖွင့်ပေးပါလိမ့်မယ်။
+
+💬 <b>အကူအညီလိုပါက / ငွေသွင်းရန် အခက်အခဲရှိပါက:</b>
+ဖုန်းမဆက်ဘဲ Admin ၏ Telegram ထံသို့ တိုက်ရိုက် စာပို့ ဆက်သွယ်ပေးပါခင်ဗျာ။
 """
 
 # ================= 3. TAROT DECK =================
@@ -214,7 +217,7 @@ def send_welcome(message):
         if is_free_period():
             success, _ = claim_daily_free_hour(user_id)
             if success:
-                bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\n\n🎉 <b>အထူး Promotion အနေဖြင့် ဒီနေ့အတွက် (၁) နာရီ အခမဲ့ ဖွင့်ပေးလိုက်ပါပြီခင်ဗျာ။</b>\n\nစိတ်ထဲ သိချင်တာလေးတွေကို စာရိုက်ပြီး လွတ်လပ်စွာ မေးမြန်းနိုင်ပါပြီ။", parse_mode="HTML")
+                bot.reply_to(message, "မင်္ဂလာပါဗျာ... ဆရာ့ဆီ ရောက်လာတာ ဝမ်းသာပါတယ်။\n\n🎉 <b>အထူး Promotion အနေဖြင့် ဒီနေ့အတွက် (၁) နာရီ အခမဲ့ ဖွင့်ပေးလိုက်ပါပြီခင်ဗျာ။</b>\n\nစိတ်ထဲ သိချင်တာလေးတွေကို စာရိုက်ပြီး လွတ်လပ်စွာ မေးမြန်းနိုင်ပါပြီ。", parse_mode="HTML")
             else:
                 bot.reply_to(message, "မင်္ဂလာပါဗျာ...\n\nဒီနေ့အတွက် (၁) နာရီ Free သုံးပြီးသွားပါပြီဗျာ။ <b>မနက်ဖြန်မှ ထပ်မံ အခမဲ့ ရယူနိုင်ပါတယ်</b> (သို့မဟုတ်) အောက်ပါအတိုင်း ငွေသွင်းပြီး Booking ချက်ချင်း ပြန်ယူနိုင်ပါတယ်။\n\n" + BANK_INFO, parse_mode="HTML")
         else:
@@ -262,7 +265,7 @@ def handle_message(message):
         if is_free_period():
             success, _ = claim_daily_free_hour(user_id)
             if success:
-                bot.reply_to(message, "🎉 <b>Promotion ကာလဖြစ်လို့ ဒီနေ့အတွက် (၁) နာရီ အခမဲ့ ဖွင့်ပေးလိုက်ပါပြီဗျာ!</b>\n\nအခုချိန်ကစပြီး ၁ နာရီအတွင်း သိချင်တာတွေ မေးနိုင်ပါပြီ။", parse_mode="HTML")
+                bot.reply_to(message, "🎉 <b>Promotion ကာလဖြစ်လို့ ဒီနေ့အတွက် (၁) နာရီ အခမဲ့ ဖွင့်ပေးလိုက်ပါပြီဗျာ!</b>\n\nအခုချိန်ကစပြီး ၁ နာရီအတွင်း သိချင်တာတွေ မေးနိုင်ပါပြီ。", parse_mode="HTML")
             else:
                 bot.reply_to(message, "ဒီနေ့အတွက် (၁) နာရီ Free သုံးပြီးသွားပါပြီဗျာ။\n<b>မနက်ဖြန်မှ ထပ်မံ အခမဲ့ ရယူနိုင်ပါတယ်</b> (သို့မဟုတ်) အောက်ပါအတိုင်း ငွေသွင်းပြီး Booking ချက်ချင်း ပြန်ယူနိုင်ပါတယ်။\n\n" + BANK_INFO, parse_mode="HTML")
                 return
@@ -272,8 +275,21 @@ def handle_message(message):
 
     user_questions[user_id] = user_text
 
-    # --- ချက်ချင်း ပြန်ပို့မည့် စောင့်ဆိုင်းရန် စာသား (UX) ---
-    temp_msg = bot.reply_to(message, "⏳ <i>ဆရာအာရုံပြုနေပါတယ်။ ပြီးတော့ ဟောကြားချက်တွေကို စာစီပေးနေလို့ ခနစောင့်ပေးပါ။</i>", parse_mode="HTML")
+    # --- မိတ်ဆွေပေးထားသော ပုံ Link ဖြင့် ချက်ချင်း ပို့မည့် စောင့်ဆိုင်းရန်ပုံ ---
+    LOADING_IMAGE = "https://i.postimg.cc/ryYtkp9S/Tarot-Sayar.png"
+    
+    try:
+        temp_msg = bot.send_photo(
+            chat_id=user_id,
+            photo=LOADING_IMAGE,
+            caption="⏳ <i>ဆရာအာရုံပြုနေပါတယ်။ ပြီးတော့ ဟောကြားချက်တွေကို စာစီပေးနေလို့ ခနစောင့်ပေးပါ။</i>",
+            parse_mode="HTML",
+            reply_to_message_id=message.message_id
+        )
+    except Exception as e:
+        print(f"Image send error: {e}")
+        temp_msg = bot.reply_to(message, "⏳ <i>ဆရာအာရုံပြုနေပါတယ်။ ပြီးတော့ ဟောကြားချက်တွေကို စာစီပေးနေလို့ ခနစောင့်ပေးပါ။</i>", parse_mode="HTML")
+        
     bot.send_chat_action(user_id, 'typing')
 
     prompt = f"""
@@ -305,17 +321,22 @@ def handle_message(message):
             markup.row(InlineKeyboardButton("ကတ် (၁)", callback_data="pick_1"), InlineKeyboardButton("ကတ် (၂)", callback_data="pick_2"), InlineKeyboardButton("ကတ် (၃)", callback_data="pick_3"))
             markup.row(InlineKeyboardButton("ကတ် (၄)", callback_data="pick_4"), InlineKeyboardButton("ကတ် (၅)", callback_data="pick_5"))
             
-            # ကတ်ရွေးခိုင်းမည်ဆိုပါက ယာယီစာတန်းကို ဖျက်ပစ်မည်
+            # ကတ်ရွေးခိုင်းမည်ဆိုပါက ယာယီပုံကို ဖျက်ပစ်မည်
             bot.delete_message(chat_id=user_id, message_id=temp_msg.message_id)
             bot.send_photo(user_id, CARD_BACK_URL, caption=f"{clean_reply}\n\n(အောက်က ကတ် ၅ ကတ်ထဲက တစ်ကတ်ကို ရွေးလိုက်ပါ... 👇)", reply_markup=markup)
         
         else:
-            # ရိုးရိုးစကားပြန်ပြောမည်ဆိုပါက ယာယီစာတန်းနေရာတွင် အစားထိုးမည်
-            bot.edit_message_text(chat_id=user_id, message_id=temp_msg.message_id, text=ai_reply)
+            # ရိုးရိုးစကားပြန်ပြောမည်ဆိုပါက ယာယီပုံကို ဖျက်ပြီး စာအသစ်ပြန်ပို့မည်
+            bot.delete_message(chat_id=user_id, message_id=temp_msg.message_id)
+            bot.reply_to(message, ai_reply)
 
     except Exception as e:
         print(f"AI CHAT ERROR: {e}")
-        bot.edit_message_text(chat_id=user_id, message_id=temp_msg.message_id, text="System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... အချိန် ၁ နာရီစာပြန်ထည့်ပေးပါမယ်။ ယခင်ငွေလွှဲထားတဲ့ Screen shoot လေးပြန်ပို့ပေးပါခင်ဗျာ။ အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျာ")
+        try:
+            bot.delete_message(chat_id=user_id, message_id=temp_msg.message_id)
+        except:
+            pass
+        bot.reply_to(message, "System ပိုင်းဆိုင်ရာ ပြဿနာလေးတွေဖြစ်နေလို့ ပြန်မေးပေးပါခင်ဗျာ... အချိန် ၁ နာရီစာပြန်ထည့်ပေးပါမယ်။ ယခင်ငွေလွှဲထားတဲ့ Screen shoot လေးပြန်ပို့ပေးပါခင်ဗျာ။ အဆင်မပြေမှုအတွက် တောင်းပန်ပါတယ်ခင်ဗျာ")
 
 # (E) Handle Card & Interpretation
 @bot.callback_query_handler(func=lambda call: call.data.startswith("pick_"))
@@ -336,9 +357,9 @@ def handle_card_picked(call):
     bot.send_chat_action(user_id, 'typing')
     
     prompt = f"""
-    Role: You are 'Saya' (ဆရာ), a wise, experienced Burmese male Tarot Astrologer. 
+    Role: You are 'Saya Gyi' (ဆရာကြီး), a wise, experienced Burmese male Tarot Astrologer. 
     
-    IMPORTANT: Do NOT use "ကွယ်" "ခင်ဗျား" "မင်း" . Use "ဗျ", "ခင်ဗျာ", "နော်" naturally. နာမ်စားတွေကို "သင်" "သင့်" သုံးပါ။ 
+    IMPORTANT: Do NOT use "ကွယ်" "ခင်ဗျား" "မင်း" . Use "ဗျ", "ခင်ဗျာ", "နော်" naturally. နာမ်စားတွေကို "သင်" "သင့်" သုံးပါ။ 
 
     Client's Question: "{user_question}"
     Tarot Card Drawn: "{card['name']}"
